@@ -175,6 +175,10 @@ fn compute_paused_length(level: u16) -> u64 {
 }
 
 impl DeltaFragment {
+  pub fn layers(&self) -> u16 {
+    self.root.level
+  }
+
   // returns
   // * `level`: the level from the popped sequence whose elements where taken
   // * `proxy_pattern`: in run-length encoded form
