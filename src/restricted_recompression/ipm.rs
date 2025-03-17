@@ -111,7 +111,7 @@ pub fn walk(
 pub fn compute_g (g : u64, proxy_pattern: &Vec<(u64, Rc<Symbol>)>) -> u64 {
   return if g == 0 {
     0
-  } else if proxy_pattern.len() > 1 && &proxy_pattern[g as usize].1 == &proxy_pattern[0].1 {
+  } else if proxy_pattern.len() > 1 && &proxy_pattern[g as usize].1 == &proxy_pattern[0].1 && proxy_pattern[g as usize].0 > proxy_pattern[0].0 {
     let offset = proxy_pattern[0].1.length * (proxy_pattern[g as usize].0 - proxy_pattern[0].0);
     proxy_pattern[0..g as usize].iter().map(|(r,symb)| r * symb.length).sum::<u64>() + offset
   } else if proxy_pattern.len() > 1 {

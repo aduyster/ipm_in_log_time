@@ -53,17 +53,17 @@ impl PartialEq for Production {
 
 /// A restricted recompression RLSLP symbol
 #[derive(Debug, PartialEq, Eq, Hash)]
-struct Symbol {
+pub struct Symbol {
   /// The right-hand side of the production
   rhs: Production,
   /// The expansion length
-  length: u64,
+  pub length: u64,
   /// The lowest level this symbol is in (guaranteed to be the same level for all occurrences within a restricted recompression RLSLP)
   level: u16,
 }
 
 impl Symbol {
-  const fn new_leaf(c: char) -> Self {
+  pub const fn new_leaf(c: char) -> Self {
     Symbol {
       length: 1,
       level: 0,
@@ -71,7 +71,7 @@ impl Symbol {
     }
   }
 
-  fn new_pair(a: Rc<Symbol>, b: Rc<Symbol>, level: u16) -> Self {
+  pub fn new_pair(a: Rc<Symbol>, b: Rc<Symbol>, level: u16) -> Self {
     Symbol {
       length: a.length + b.length,
       level,
@@ -79,7 +79,7 @@ impl Symbol {
     }
   }
 
-  fn new_run(a: Rc<Symbol>, k: u64, level: u16) -> Self {
+  pub fn new_run(a: Rc<Symbol>, k: u64, level: u16) -> Self {
     Symbol {
       length: a.length * k,
       level,
@@ -163,9 +163,9 @@ impl Symbol {
 pub struct DeltaFragment {
   // roots: Vec<Rc<Symbol>>, // the roots of a fragment! (for the entire tree, there is only one; otherwise, at most O(#rounds))
   // todo: the delta level, how to do this now that the rootlevel may contain things below? but is that even an issue?
-  root: Rc<Symbol>,
-  from: u64,
-  to: u64,
+  pub root: Rc<Symbol>,
+  pub from: u64,
+  pub to: u64,
 }
 
 fn compute_paused_length(level: u16) -> u64 {
@@ -284,9 +284,9 @@ impl DeltaFragment {
     &self,
     level: u16,
     max_par_len: u64, // maximum number of distinct parents (shrink size) on each side of the center
-    max_len: u64, // maximum number of symbols at each side of the center
+                max_len: u64, // maximum number of symbols at each side of the center
   ) -> ParseTreeSlice {
-  let mut middle = UncompressedParseTreeNode::leaf(self.root.clone(), self.from + self.len() / 2);
+    let mut middle = UncompressedParseTreeNode::leaf(self.root.clone(), self.from + self.len() / 2);
     while middle.level < level {
       middle = middle.parent();
     }
@@ -321,8 +321,8 @@ impl PillarModelFragment for DeltaFragment {
       let mut leaves = HashMap::<char, Rc<Symbol>>::new();
 
       s.chars()
-        .map(|c| Rc::clone(leaves.entry(c).or_insert(Rc::new(Symbol::new_leaf(c)))))
-        .collect()
+      .map(|c| Rc::clone(leaves.entry(c).or_insert(Rc::new(Symbol::new_leaf(c)))))
+      .collect()
     };
     let mut next_level = vec![];
 
@@ -364,8 +364,8 @@ impl PillarModelFragment for DeltaFragment {
               let key = (Rc::clone(&l), Rc::clone(&r));
               let n : &Rc<Symbol> = symbols_for_next_level.entry(key).or_insert(Rc::new(Symbol::new_pair(
                 Rc::clone(&l),
-                Rc::clone(&r),
-                level + 1,
+                                                                                                         Rc::clone(&r),
+                                                                                                         level + 1,
               )));
               next_level.push(Rc::clone(n));
               last_left = false;
@@ -412,8 +412,8 @@ impl PillarModelFragment for DeltaFragment {
           let key = (Rc::clone(&last_symbol), counter);
           let new_node = symbols_for_next_level.entry(key).or_insert(Rc::new(Symbol::new_run(
             Rc::clone(&last_symbol),
-            counter,
-            level + 1,
+                                                                                             counter,
+                                                                                             level + 1,
           )));
 
           next_level.push(Rc::clone(new_node));
@@ -470,10 +470,10 @@ impl PillarModelFragment for DeltaFragment {
 
     let full: u64 = lce(
       self.root.clone(),
-      self.from,
-      other.root.clone(),
-      other.from,
-      true,
+                        self.from,
+                        other.root.clone(),
+                        other.from,
+                        true,
     );
 
 
@@ -486,10 +486,10 @@ impl PillarModelFragment for DeltaFragment {
 
     let full: u64 = lce(
       self.root.clone(),
-      self.to,
-      other.root.clone(),
-      other.to,
-      false,
+                        self.to,
+                        other.root.clone(),
+                        other.to,
+                        false,
     );
     let scope = std::cmp::min(self.to - self.from, other.to - other.from);
     return std::cmp::min(full, scope);
@@ -506,45 +506,45 @@ impl PillarModelFragment for DeltaFragment {
     // find candidates, reduce them part by part
     common::combine_progressions(
       common::rle_pattern_matching(&proxy_pattern.content, &proxy_text.content)
-        .filter_map( |mut candidate| {
-          candidate.g = ipm::compute_g(candidate.g, &proxy_pattern.content);
-          candidate.a = ipm::compute_a(&mut candidate, &proxy_pattern, &proxy_text)?;
+      .filter_map( |mut candidate| {
+        candidate.g = ipm::compute_g(candidate.g, &proxy_pattern.content);
+        candidate.a = ipm::compute_a(&mut candidate, &proxy_pattern, &proxy_text)?;
 
-          if candidate.max_i > 1 {
-            debug_assert!(candidate.g!=0);
+        if candidate.max_i > 1 {
+          debug_assert!(candidate.g!=0);
 
-            let u = self.extract(std::cmp::min(end_of_proxy_pattern_in_x, self.len()), self.len())            .lcp(&self.extract(std::cmp::min(end_of_proxy_pattern_in_x - candidate.g,self.len()), self.len()));
-            let ubar = self.extract(0, proxy_pattern.prefix_len).lcp_r(&self.extract(0, proxy_pattern.prefix_len + candidate.g));
+          let u = self.extract(std::cmp::min(end_of_proxy_pattern_in_x, self.len()), self.len())            .lcp(&self.extract(std::cmp::min(end_of_proxy_pattern_in_x - candidate.g,self.len()), self.len()));
+          let ubar = self.extract(0, proxy_pattern.prefix_len).lcp_r(&self.extract(0, proxy_pattern.prefix_len + candidate.g));
 
-            let paper_a = candidate.a + end_of_proxy_pattern_in_x + (candidate.max_i-1)*candidate.g;
-            let v = other.extract(std::cmp::min(paper_a,other.len()), other.len()).lcp(& other.extract(std::cmp::min(paper_a-candidate.g,other.len()), other.len()));
-            let paper_abar = candidate.a+proxy_pattern.prefix_len;
-            let vbar = other.extract(0, paper_abar).lcp_r(&other.extract(0, paper_abar + candidate.g));
+          let paper_a = candidate.a + end_of_proxy_pattern_in_x + (candidate.max_i-1)*candidate.g;
+          let v = other.extract(std::cmp::min(paper_a,other.len()), other.len()).lcp(& other.extract(std::cmp::min(paper_a-candidate.g,other.len()), other.len()));
+          let paper_abar = candidate.a+proxy_pattern.prefix_len;
+          let vbar = other.extract(0, paper_abar).lcp_r(&other.extract(0, paper_abar + candidate.g));
 
-            candidate = ipm::validate_occurence(
-              candidate,
-              proxy_pattern.prefix_len,
-              proxy_pattern_suffix_len,
-              u,
-              ubar,
-              v,
-              vbar,
-            )?;
-          }
-
-          return if candidate.max_i == 1 {
-            candidate.g = 0;
-            let hit = &other.extract(std::cmp::min(other.len(), candidate.a),std::cmp::min(candidate.a + self.len(),other.len()));
-
-            if self.lcp(&hit) == self.len() {
-              Some(candidate)
-            } else {
-              None
-            }
-          } else {
-            Some(candidate)
-          };
+          candidate = ipm::validate_occurence(
+            candidate,
+            proxy_pattern.prefix_len,
+            proxy_pattern_suffix_len,
+            u,
+            ubar,
+            v,
+            vbar,
+          )?;
         }
+
+        return if candidate.max_i == 1 {
+          candidate.g = 0;
+          let hit = &other.extract(std::cmp::min(other.len(), candidate.a),std::cmp::min(candidate.a + self.len(),other.len()));
+
+          if self.lcp(&hit) == self.len() {
+            Some(candidate)
+          } else {
+            None
+          }
+        } else {
+          Some(candidate)
+        };
+      }
       )
     )
   }
@@ -672,11 +672,11 @@ mod tests {
     assert_eq!(ParseTreeSlice { level: 0, content: pp1, prefix_len: 0}, df.extract(1, 4).proxy_pattern());
     assert_eq!(ParseTreeSlice { level: 0, content: pp2, prefix_len: 0}, df.extract(2, 5).proxy_pattern());
     assert_eq!(ParseTreeSlice { level: 0, content: vec![(4, a.clone()), (1, b.clone()), (2, a.clone())], prefix_len: 0},
-      df.extract(1, 8).proxy_pattern()
+               df.extract(1, 8).proxy_pattern()
     );
     assert_eq!(
       ParseTreeSlice { level: 0, content: vec![(3, a.clone()), (1, b.clone()), (2, a.clone())], prefix_len: 0},
-      df.extract(2, 8).proxy_pattern()
+               df.extract(2, 8).proxy_pattern()
     );
     assert_eq!(ParseTreeSlice { level: 0, content: pp5, prefix_len: 0}, df.extract(5, 8).proxy_pattern());
     assert_eq!(ParseTreeSlice { level: 0, content: vec![(4, a.clone()), (1, b.clone()), (1, a.clone())], prefix_len: 0}, df.extract(1, 7).proxy_pattern());
@@ -794,7 +794,7 @@ mod tests {
 
     assert_eq!(
       ParseTreeSlice { content: vec![(1,A.clone()),(1, C.clone()), (1, e.clone())], prefix_len: 0, level: 1},
-      df.proxy_text(1,2,4)
+               df.proxy_text(1,2,4)
     );
     assert_eq!(ParseTreeSlice { content: vec![(1, C.clone())], prefix_len: 2, level: 1},df.proxy_text(1,1,1));
     assert_eq!(ParseTreeSlice { content: vec![(1, A.clone()),(1, C.clone())],prefix_len:0, level:1},df.proxy_text(1,1,2));
@@ -963,28 +963,28 @@ mod tests {
     assert_eq!(text.clone().len() as u64, nf.len());
 
     let mut rngo = StdRng::seed_from_u64(xy_seed);
-      // pick some random values
-      let xoffset = rngo.sample(Uniform::new(0,g as u64 -1));
-      let xlen = rngo.sample(Uniform::new(1,9*g as u64));
-      let yoffset = g as u64 *10 + rngo.sample(Uniform::new(0,990*g as u64-2*xlen));
-      let ylen = rngo.sample(Uniform::new(xlen,std::cmp::max(xlen+1,2*xlen-1)));
-      assert!(2*xlen>ylen);
-      assert!(xlen <= ylen);
-      assert!(xoffset+xlen < text.len() as u64);
-      assert!(yoffset+ylen < text.len() as u64);
+    // pick some random values
+    let xoffset = rngo.sample(Uniform::new(0,g as u64 -1));
+    let xlen = rngo.sample(Uniform::new(1,9*g as u64));
+    let yoffset = g as u64 *10 + rngo.sample(Uniform::new(0,990*g as u64-2*xlen));
+    let ylen = rngo.sample(Uniform::new(xlen,std::cmp::max(xlen+1,2*xlen-1)));
+    assert!(2*xlen>ylen);
+    assert!(xlen <= ylen);
+    assert!(xoffset+xlen < text.len() as u64);
+    assert!(yoffset+ylen < text.len() as u64);
 
-      let dx = df.extract(xoffset, xoffset+xlen);
-      let nx = nf.extract(xoffset, xoffset+xlen);
-      let dy = df.extract(yoffset, yoffset+ylen);
-      let ny = nf.extract(yoffset, yoffset+ylen);
+    let dx = df.extract(xoffset, xoffset+xlen);
+    let nx = nf.extract(xoffset, xoffset+xlen);
+    let dy = df.extract(yoffset, yoffset+ylen);
+    let ny = nf.extract(yoffset, yoffset+ylen);
 
-      let naive_res  = nx.ipm(&ny);
-      dbg!(&naive_res);
-      let faster_res = dx.ipm(&dy);
+    let naive_res  = nx.ipm(&ny);
+    dbg!(&naive_res);
+    let faster_res = dx.ipm(&dy);
 
-      dbg!(&text[xoffset as usize..xoffset as usize+xlen as usize]);
-      dbg!(&text[yoffset as usize..yoffset as usize+ylen as usize]);
-      assert_eq!(naive_res, faster_res);
+    dbg!(&text[xoffset as usize..xoffset as usize+xlen as usize]);
+    dbg!(&text[yoffset as usize..yoffset as usize+ylen as usize]);
+    assert_eq!(naive_res, faster_res);
   }
 
   #[test_case(1)]
@@ -1020,5 +1020,66 @@ mod tests {
     let xr = dfr.extract(k-1, 3*k+1);
     let yr = dfr.extract(0, 4*k);
     assert_eq!(Some(ArithmeticProgression{a: k-1, g:0, max_i: 1}), xr.ipm(&yr));
+  }
+
+  #[test]
+  fn simple_measure() {
+    fn sturmian_prefix(exponent: usize, length: usize) -> String {
+      let mut a = String::from("b");
+      let mut b = String::from("a");
+
+      while b.len() < length {
+        a = b.repeat(exponent)+&a;
+        core::mem::swap(&mut a, &mut b);
+      }
+
+      b[..length].to_string()
+    }
+
+    fn has_candidate(x: DeltaFragment, y: DeltaFragment) -> bool {
+      let proxy_pattern = x.proxy_pattern();
+      let proxy_text = y.proxy_text(proxy_pattern.level, 2*(proxy_pattern.level as u64)+3, proxy_pattern.len()+(proxy_pattern.level as u64));
+
+      for candidate in common::rle_pattern_matching(&proxy_pattern.content, &proxy_text.content) {
+        if candidate.max_i > 0 {
+          return true;
+        }
+      }
+      false
+    }
+
+    let a = sturmian_prefix(3, 1000000);
+
+    let dfa = DeltaFragment::from_randomized(a);
+
+    let mut rngo = StdRng::from_entropy();
+
+    let mut unsuccess_total = 0;
+    let mut unsuccess_has_candidate = 0;
+
+    for _ in 0..10000 {
+      let xlen_dist  = Uniform::new(2,dfa.len()/2);
+      let xlen : u64 = rngo.sample(xlen_dist);
+      let ylen = xlen*2-1;
+
+      let ystart = rngo.sample(Uniform::new(0,dfa.len()-ylen));
+      let xstart = rngo.sample(Uniform::new(0,dfa.len()-xlen));
+
+      let y = dfa.extract(ystart, ystart+ylen);
+      let x = dfa.extract(xstart,xstart+xlen);
+
+      if x.ipm(&y).is_none() {
+        unsuccess_total += 1;
+        if has_candidate(x, y) {
+          unsuccess_has_candidate += 1;
+        }
+      }
+    }
+
+    // about the same number of success...
+    dbg!(unsuccess_total);
+    dbg!(unsuccess_has_candidate);
+
+    // assert!(false); // necessary to enable print
   }
 }
